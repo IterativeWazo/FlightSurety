@@ -12,6 +12,16 @@ contract FlightSuretyData {
     address private contractOwner;                                      // Account used to deploy contract
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
 
+    struct Airline {
+        string name;
+        bool isRegistered;
+        bool registrationFee;
+    }
+
+    mapping(address => Airline) airlines;
+    uint256 public totalRegisteredAirlines;
+    mapping(address => uint256) private authorizedCaller;
+    
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -26,8 +36,19 @@ contract FlightSuretyData {
                                 ) 
                                 public 
     {
+        authorizedCaller[msg.sender] = 1;
         contractOwner = msg.sender;
+        airlines[msg.sender] = Airline({
+                                     name: "Genesis Airline",
+                                     isRegistered: true,
+                                     registrationFee: true
+        });
+
+        totalRegisteredAirlines = 1;
+
     }
+
+    event newAirlineRegistered(address newAirline,address airlineReferral);
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -53,6 +74,13 @@ contract FlightSuretyData {
     modifier requireContractOwner()
     {
         require(msg.sender == contractOwner, "Caller is not contract owner");
+        _;
+    }
+
+
+    modifier requireIsCallerAuthorized()
+    {
+        require(authorizedCaller[msg.sender] == 1, "Caller is not authorized");
         _;
     }
 
@@ -83,10 +111,60 @@ contract FlightSuretyData {
                             (
                                 bool mode
                             ) 
-                            external
-                            requireContractOwner 
+                            external 
     {
+        require(authorizedCaller[msg.sender] == 1, "Caller is not authorized");
         operational = mode;
+    }
+
+    function authorizeCaller
+                            (
+                                address callerAddress
+                            )
+                            external
+                            requireContractOwner
+    {
+        authorizedCaller[callerAddress] = 1;
+    }
+
+    function deauthorizeCaller
+                            (
+                                address callerAddress
+                            )
+                            external
+                            requireContractOwner
+    {
+        delete authorizedCaller[callerAddress];
+    }
+
+    function isAuthorizedCaller (
+                                 address caller
+                                 ) 
+                                 public 
+                                 view  
+                                 returns (uint256)
+                                  {
+        return authorizedCaller[caller]; 
+    }
+
+    function isAirlineRegisted(
+                               address addressAirline
+                              )
+                              external
+                              view
+                              returns (bool)
+                              {                    
+    return airlines[addressAirline].isRegistered;                                                   
+    }
+
+    function paidRegistration(
+                               address airlineAddress
+                               ) 
+                               external
+                               view 
+                              returns (bool registrationFee)
+    {
+        registrationFee = airlines[airlineAddress].registrationFee;
     }
 
     /********************************************************************************************/
@@ -97,15 +175,30 @@ contract FlightSuretyData {
     * @dev Add an airline to the registration queue
     *      Can only be called from FlightSuretyApp contract
     *
-    */   
+    */ 
+    
     function registerAirline
-                            (   
+                            (    
+                                string name,
+                                address newAirline,
+                                address airlineReferral                              
                             )
                             external
-                            pure
+                            requireContractOwner
     {
-    }
+        require(!airlines[newAirline].isRegistered, "Airline is alredy registered.");
+        require(airlines[airlineReferral].isRegistered, "Referral airline is not registered.");
 
+        
+        airlines[newAirline] = Airline({
+                                     name: name,
+                                     isRegistered: true,
+                                     registrationFee: false
+        });
+        totalRegisteredAirlines = totalRegisteredAirlines.add(1);
+        
+        emit newAirlineRegistered(newAirline,airlineReferral);
+    }
 
    /**
     * @dev Buy insurance for a flight

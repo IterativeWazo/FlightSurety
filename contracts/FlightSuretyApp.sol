@@ -33,8 +33,9 @@ contract FlightSuretyApp {
         address airline;
     }
     mapping(bytes32 => Flight) private flights;
-
- 
+    
+    //dataContract
+    FlightSuretyData flightSuretyData; 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
     /********************************************************************************************/
@@ -73,10 +74,12 @@ contract FlightSuretyApp {
     */
     constructor
                                 (
+                                  address addressContract   
                                 ) 
                                 public 
     {
         contractOwner = msg.sender;
+        flightSuretyData = FlightSuretyData(addressContract);
     }
 
     /********************************************************************************************/
@@ -85,10 +88,10 @@ contract FlightSuretyApp {
 
     function isOperational() 
                             public 
-                            pure 
+                            view
                             returns(bool) 
     {
-        return true;  // Modify to call data contract's status
+        return (flightSuretyData.isOperational());  // Modify to call data contract's status
     }
 
     /********************************************************************************************/
@@ -101,7 +104,7 @@ contract FlightSuretyApp {
     *
     */   
     function registerAirline
-                            (   
+                            (  
                             )
                             external
                             pure
@@ -335,3 +338,44 @@ contract FlightSuretyApp {
 // endregion
 
 }   
+
+/********************************************************************************************/
+/*                                       Interface FlightSuretyData                         */
+/********************************************************************************************/
+
+contract FlightSuretyData{
+
+     struct Airline {
+        string name;
+        bool isRegistered;
+        bool paidRegistration;
+    }   
+    mapping(address => Airline) airlines;
+    uint256 public totalRegisteredAirlines;
+    
+    function isOperational() 
+                            public 
+                            view 
+                            returns(bool);
+
+    function setOperatingStatus
+                            (
+                                bool mode
+                            ) 
+                            external;
+
+    function paidRegistration(
+                               address airlineAddress
+                               ) 
+                               external
+                               view 
+                              returns (bool);
+
+    function registerAirline
+                            ( 
+                                string name,
+                                address newAirline,
+                                address airlineReferral
+                            )
+                            external;
+}

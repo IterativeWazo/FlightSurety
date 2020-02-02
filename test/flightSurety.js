@@ -6,7 +6,9 @@ contract('Flight Surety Tests', async (accounts) => {
 
   var config;
   before('setup contract', async () => {
+    //console.log(`accounts   ${accounts}`);
     config = await Test.Config(accounts);
+    //console.log(`config address  ${config.flightSuretyApp.address}`);
     await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address);
   });
 
@@ -14,6 +16,7 @@ contract('Flight Surety Tests', async (accounts) => {
   /* Operations and Settings                                                              */
   /****************************************************************************************/
 
+ /*
   it(`(multiparty) has correct initial isOperational() value`, async function () {
 
     // Get operating status
@@ -21,7 +24,8 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(status, true, "Incorrect initial operating status value");
 
   });
-
+ 
+  
   it(`(multiparty) can block access to setOperatingStatus() for non-Contract Owner account`, async function () {
 
       // Ensure that access is denied for non-Contract Owner account
@@ -89,6 +93,6 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(result, false, "Airline should not be able to register another airline if it hasn't provided funding");
 
   });
- 
+ */
 
 });

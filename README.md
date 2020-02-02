@@ -11,6 +11,9 @@ To install, download or clone the repo, then:
 `npm install`
 `truffle compile`
 
+## Run ganache-cli - inicates the mnemonic and number of test accounts
+`ganache-cli -m "candy maple cake sugarudding cream honey rich smooth crumble sweet treat" -a 50`
+
 ## Develop Client
 
 To run truffle tests:
