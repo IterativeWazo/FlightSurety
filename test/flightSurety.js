@@ -16,7 +16,7 @@ contract('Flight Surety Tests', async (accounts) => {
   /* Operations and Settings                                                              */
   /****************************************************************************************/
 
- /*
+ 
   it(`(multiparty) has correct initial isOperational() value`, async function () {
 
     // Get operating status
@@ -25,7 +25,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
   });
  
-  
+ /* 
   it(`(multiparty) can block access to setOperatingStatus() for non-Contract Owner account`, async function () {
 
       // Ensure that access is denied for non-Contract Owner account

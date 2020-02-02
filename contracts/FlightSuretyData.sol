@@ -9,8 +9,8 @@ contract FlightSuretyData {
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
-    address private contractOwner;                                      // Account used to deploy contract
-    bool private operational = true;                                    // Blocks all state changes throughout the contract if false
+    address private contractOwner;                                    
+    bool private operational = true;                                   
 
     struct Airline {
         string name;
@@ -33,6 +33,7 @@ contract FlightSuretyData {
     */
     constructor
                                 (
+                                 address genesisAirline
                                 ) 
                                 public 
     {
@@ -43,7 +44,8 @@ contract FlightSuretyData {
                                      isRegistered: true,
                                      registrationFee: true
         });
-
+        
+        airlines[genesisAirline].isRegistered = true;
         totalRegisteredAirlines = 1;
 
     }
