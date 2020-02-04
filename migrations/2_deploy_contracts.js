@@ -16,8 +16,8 @@ module.exports = function(deployer) {
                             appAddress: FlightSuretyApp.address
                         }
                     }
-                    console.log(`FlightSuretyData after  ${FlightSuretyData.address}`)
-                    console.log(`FlightSuretyApp  after ${FlightSuretyApp.address}`)
+                    console.log(`FlightSuretyData in deploy contracts ${FlightSuretyData.address}`)
+                    console.log(`FlightSuretyApp  in deploy contracts  ${FlightSuretyApp.address}`)
                     fs.writeFileSync(__dirname + '/../src/dapp/config.json',JSON.stringify(config, null, '\t'), 'utf-8');
                     fs.writeFileSync(__dirname + '/../src/server/config.json',JSON.stringify(config, null, '\t'), 'utf-8');
                 });

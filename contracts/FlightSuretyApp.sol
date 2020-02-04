@@ -36,6 +36,13 @@ contract FlightSuretyApp {
     
     //dataContract
     FlightSuretyData flightSuretyData; 
+
+    //multiparty-consensus
+    mapping (address => address[]) public multiCalls;
+
+    //minimum payment for airline to be registered
+     uint public minPayment = 10 ether;
+
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
     /********************************************************************************************/
@@ -64,6 +71,27 @@ contract FlightSuretyApp {
         _;
     }
 
+    modifier requireEnoughFunds(){
+        require(msg.value >= minPayment, "It is needed at least 10ETH to register");
+        _;
+    }
+    modifier requirePaidRegistration()
+    {
+     require(flightSuretyData.paidRegistration(msg.sender), "Airline needs to pay registration fee");
+      _;
+    }
+
+    modifier requireIsAirline()
+    {
+      require(flightSuretyData.isAirline(msg.sender), "Airline needs to be registered");
+      _; 
+    }
+
+     modifier requireMinimumPayment() {
+        require(msg.value >= minPayment, "Requires 10 ETH to be registered");
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       CONSTRUCTOR                                        */
     /********************************************************************************************/
@@ -81,7 +109,11 @@ contract FlightSuretyApp {
         contractOwner = msg.sender;
         flightSuretyData = FlightSuretyData(addressContract);
     }
+    /********************************************************************************************/
+    /*                                       EVENTS                                             */
+    /********************************************************************************************/
 
+     event registeredFlight(address airlineAddress, string flightCode, string destination, uint256 departureTime);
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
@@ -92,6 +124,15 @@ contract FlightSuretyApp {
                             returns(bool) 
     {
         return (flightSuretyData.isOperational());  // Modify to call data contract's status
+    }
+
+    function setOperatingStatus
+                            (
+                                bool mode
+                            ) 
+                            external
+    {
+        flightSuretyData.setOperatingStatus(mode); 
     }
 
     /********************************************************************************************/
@@ -105,12 +146,46 @@ contract FlightSuretyApp {
     */   
     function registerAirline
                             (  
+                             string name,   
+                             address newAirline
                             )
+                            requirePaidRegistration
+                            requireIsAirline
                             external
-                            pure
-                            returns(bool success, uint256 votes)
+                            
     {
-        return (success, 0);
+        if(flightSuretyData.totalRegisteredAirlines() < 4){
+            flightSuretyData.registerAirline(name, newAirline, msg.sender);
+        }else{
+        
+        bool isDuplicate = false;
+        for(uint c=0; c<multiCalls[newAirline].length; c++) {
+            if (multiCalls[newAirline][c] == msg.sender) {
+                isDuplicate = true;
+                break;
+            }
+        }
+        require(!isDuplicate, "Caller has already called this function.");
+
+        multiCalls[newAirline].push(msg.sender);
+        //multiparty-consensus needs 50%
+        if (multiCalls[newAirline].length >= flightSuretyData.totalRegisteredAirlines().div(2)) {     
+            multiCalls[newAirline] = new address[](0);     
+            flightSuretyData.registerAirline(name, newAirline, msg.sender);
+         }
+        }
+    }
+
+    function fund 
+                 (
+
+                 )
+                 external
+                 requireIsOperational
+                 requireEnoughFunds
+                 payable
+    {
+      flightSuretyData.fund.value(msg.value)(msg.sender); 
     }
 
 
@@ -120,10 +195,28 @@ contract FlightSuretyApp {
     */  
     function registerFlight
                                 (
+                                 uint statusCode,
+                                 string flightCode,
+                                 string origin,
+                                 string destination,
+                                 uint256 departureTime,
+                                 uint ticketFee
                                 )
                                 external
-                                pure
+                                requireIsOperational
+                                requirePaidRegistration
     {
+        flightSuretyData.registerFlight(
+          statusCode,
+          flightCode,
+          origin,
+          destination,
+          departureTime,
+          ticketFee,
+          msg.sender
+        );
+
+        emit registeredFlight(msg.sender, flightCode, destination, departureTime);
 
     }
     
@@ -371,6 +464,19 @@ contract FlightSuretyData{
                                view 
                               returns (bool);
 
+    function isAirline(
+                              address addressAirline
+                              )
+                              external
+                              view
+                              returns (bool);                        
+
+    function fund(    
+                              address fundAddress
+                              )
+                              public
+                              payable; 
+
     function registerAirline
                             ( 
                                 string name,
@@ -378,4 +484,17 @@ contract FlightSuretyData{
                                 address airlineReferral
                             )
                             external;
+
+    function registerFlight
+                        (
+                          uint statusCode,
+                          string flightCode,
+                          string origin,
+                          string destination,
+                          uint256 departureTime,
+                          uint ticketFee,
+                          address airlineAddress
+                        )
+                        external;
+    
 }

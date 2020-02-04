@@ -21,6 +21,21 @@ contract FlightSuretyData {
     mapping(address => Airline) airlines;
     uint256 public totalRegisteredAirlines;
     mapping(address => uint256) private authorizedCaller;
+
+    struct Flight {
+        uint statusCode;
+        string flightCode;
+        string origin;
+        string destination;
+        uint256 departureTime;
+        uint ticketFee;
+        address airlineAddress;
+        mapping(address => bool) flightBookings;
+        mapping(address => uint) flightiInsurances;
+    }     
+    mapping(bytes32 => Flight) public flights;                            
+    bytes32[] public flightKeys;
+    uint public totalFlightKeys = 0;
     
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -49,9 +64,14 @@ contract FlightSuretyData {
         totalRegisteredAirlines = 1;
 
     }
+    /********************************************************************************************/
+    /*                                       EVENTS                                             */
+    /********************************************************************************************/
+
+    event receivedRegistrationFee(address fundAddress);
 
     event newAirlineRegistered(address newAirline,address airlineReferral);
-
+    
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
     /********************************************************************************************/
@@ -149,7 +169,7 @@ contract FlightSuretyData {
         return authorizedCaller[caller]; 
     }
 
-    function isAirlineRegisted(
+    function isAirline(
                                address addressAirline
                               )
                               external
@@ -186,7 +206,7 @@ contract FlightSuretyData {
                                 address airlineReferral                              
                             )
                             external
-                            requireContractOwner
+                            requireIsOperational
     {
         require(!airlines[newAirline].isRegistered, "Airline is alredy registered.");
         require(airlines[airlineReferral].isRegistered, "Referral airline is not registered.");
@@ -200,6 +220,44 @@ contract FlightSuretyData {
         totalRegisteredAirlines = totalRegisteredAirlines.add(1);
         
         emit newAirlineRegistered(newAirline,airlineReferral);
+    }
+
+    function registerFlight
+    (
+        uint statusCode,
+        string flightCode,
+        string origin,
+        string destination,
+        uint256 departureTime,
+        uint ticketFee,
+        address airlineAddress
+    )
+    external
+    requireIsOperational
+    {
+        require(departureTime > now, "Flight time must be later");
+    
+        Flight memory flight = Flight(
+          statusCode,
+          flightCode,
+          origin,
+          destination,
+          departureTime,
+          ticketFee,
+          airlineAddress
+        );
+
+        bytes32 flightKey = getFlightKey
+                           (
+                            airlineAddress,
+                            flightCode,
+                            departureTime
+                           );
+                           
+        flights[flightKey] = flight;
+
+        totalFlightKeys = flightKeys.push(flightKey).sub(1);
+        
     }
 
    /**
@@ -246,23 +304,27 @@ contract FlightSuretyData {
     */   
     function fund
                             (   
+                              address fundAddress  
                             )
                             public
+                            requireIsOperational
                             payable
     {
+        airlines[fundAddress].registrationFee = true;
+        emit receivedRegistrationFee(fundAddress);
     }
 
     function getFlightKey
                         (
                             address airline,
-                            string memory flight,
-                            uint256 timestamp
+                            string flightCode,
+                            uint256 departureTime
                         )
                         pure
                         internal
                         returns(bytes32) 
     {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
+        return keccak256(abi.encodePacked(airline, flightCode, departureTime));
     }
 
     /**
@@ -273,7 +335,8 @@ contract FlightSuretyData {
                             external 
                             payable 
     {
-        fund();
+        require(msg.data.length == 0,"Fallback function,data must be greater than Zero to proceed");
+        fund(msg.sender);
     }
 
 
