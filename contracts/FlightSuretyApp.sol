@@ -219,6 +219,21 @@ contract FlightSuretyApp {
         emit registeredFlight(msg.sender, flightCode, destination, departureTime);
 
     }
+
+    function getFlightKey
+                        (
+                            address airline,
+                            string flightCode,
+                            uint256 departureTime
+                        )
+                        view
+                        internal
+                        returns(bytes32)
+    {
+
+    return flightSuretyData.getFlightKey(airline, flightCode, departureTime);
+                       
+    } 
     
    /**
     * @dev Called after oracle has updated flight status
@@ -371,19 +386,6 @@ contract FlightSuretyApp {
     }
 
 
-    function getFlightKey
-                        (
-                            address airline,
-                            string flight,
-                            uint256 timestamp
-                        )
-                        pure
-                        internal
-                        returns(bytes32) 
-    {
-        return keccak256(abi.encodePacked(airline, flight, timestamp));
-    }
-
     // Returns array of three non-duplicating integers from 0-9
     function generateIndexes
                             (                       
@@ -496,5 +498,15 @@ contract FlightSuretyData{
                           address airlineAddress
                         )
                         external;
+
+     function getFlightKey
+                        (
+                            address airline,
+                            string flightCode,
+                            uint256 departureTime
+                        )
+                        pure
+                        external
+                        returns(bytes32);                     
     
 }

@@ -31,12 +31,14 @@ contract FlightSuretyData {
         uint ticketFee;
         address airlineAddress;
         mapping(address => bool) flightBookings;
-        mapping(address => uint) flightiInsurances;
+        mapping(address => uint) flightInsurances;
     }     
     mapping(bytes32 => Flight) public flights;                            
     bytes32[] public flightKeys;
     uint public totalFlightKeys = 0;
     
+    address[] internal customers;
+    mapping(address => uint) public claimAmount; //not sure
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
@@ -72,6 +74,9 @@ contract FlightSuretyData {
 
     event newAirlineRegistered(address newAirline,address airlineReferral);
     
+    event gotTicket(bytes32 flightKey,address passengerAddress); 
+
+    event boughtInsurance(bytes32 flightKey,address customerAddress, uint amount);  
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
     /********************************************************************************************/
@@ -103,6 +108,12 @@ contract FlightSuretyData {
     modifier requireIsCallerAuthorized()
     {
         require(authorizedCaller[msg.sender] == 1, "Caller is not authorized");
+        _;
+    }
+
+    modifier requireIsFlight(bytes32 flightKey)
+    {
+        require(flights[flightKey].departureTime == 0, "Flight does not exist");
         _;
     }
 
@@ -260,17 +271,44 @@ contract FlightSuretyData {
         
     }
 
+    function getFlightTicket
+                            (
+                                    bytes32 flightKey, 
+                                    address customerAddress                             
+                            )
+                            external
+                            requireIsOperational
+                            requireIsFlight(flightKey)
+                            payable
+    {
+        Flight storage flight = flights[flightKey];    
+        flight.flightBookings[customerAddress] = true;          
+        emit gotTicket(flightKey,customerAddress);                
+
+    }
+
    /**
     * @dev Buy insurance for a flight
     *
     */   
-    function buy
-                            (                             
+    function buyInsurance
+                            (     
+                             bytes32 flightKey,   
+                             uint amount, 
+                             address customerAddress                       
                             )
                             external
+                            requireIsOperational
+                            requireIsFlight(flightKey)
                             payable
     {
+        Flight storage flight = flights[flightKey];  
+        flight.flightInsurances[customerAddress] = amount;   
 
+        customers.push(customerAddress);
+        claimAmount[flight.airlineAddress] = flight.ticketFee;   
+        
+        emit boughtInsurance(flightKey,customerAddress,amount);      
     }
 
     /**
@@ -321,10 +359,21 @@ contract FlightSuretyData {
                             uint256 departureTime
                         )
                         pure
-                        internal
+                        public
                         returns(bytes32) 
     {
         return keccak256(abi.encodePacked(airline, flightCode, departureTime));
+    }
+
+    function getTicketFee
+                        (
+                            bytes32 flightKey
+                        )
+                        external
+                        view
+                        returns (uint ticketFee)
+    {
+      return flights[flightKey].ticketFee;                    
     }
 
     /**
