@@ -92,6 +92,12 @@ contract FlightSuretyApp {
         _;
     }
 
+    modifier requirePaymentBuyTicketAndInsurance(address airline, string flightCode, uint256 departureTime, uint payment) {
+        require(payment >= flightSuretyData.getTicketFee(getFlightKey(airline, flightCode, departureTime)).add(1 ether)
+                , "Requires greater payment to get ticket and Insurance");
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       CONSTRUCTOR                                        */
     /********************************************************************************************/
@@ -219,7 +225,7 @@ contract FlightSuretyApp {
         emit registeredFlight(msg.sender, flightCode, destination, departureTime);
 
     }
-
+    
     function getFlightKey
                         (
                             address airline,
@@ -228,12 +234,35 @@ contract FlightSuretyApp {
                         )
                         view
                         internal
-                        returns(bytes32)
+                        returns(bytes32) 
     {
+        return flightSuretyData.getFlightKey(airline, flightCode, departureTime);
+    }
+    
+    function getFlightTicketAndBuyInsurance
+                                        (
+                                           address airline,
+                                           string flightCode,
+                                           uint256 departureTime,  
+                                           address customerAddress,
+                                           uint payment 
+                                        )
+                                        external
+                                        requirePaymentBuyTicketAndInsurance(airline, flightCode, departureTime, payment)
+                                        payable
+    {
+       bytes32 flightKey = getFlightKey(airline, flightCode, departureTime); 
+       
+       uint total = flightSuretyData.getTicketFee(flightKey).add(1 ether);
 
-    return flightSuretyData.getFlightKey(airline, flightCode, departureTime);
-                       
-    } 
+       if(msg.value > total){
+           uint change = msg.value - total;
+           msg.sender.transfer(change);
+       } 
+
+       flightSuretyData.getFlightTicket(flightKey,customerAddress);
+       flightSuretyData.buyFligthAndInsurance.value(msg.value)(flightKey,payment,customerAddress);
+    }
     
    /**
     * @dev Called after oracle has updated flight status
@@ -499,7 +528,15 @@ contract FlightSuretyData{
                         )
                         external;
 
-     function getFlightKey
+function getTicketFee
+                        (
+                           bytes32 flightKey
+                        )
+                        pure
+                        external
+                        returns (uint);                    
+
+function getFlightKey
                         (
                             address airline,
                             string flightCode,
@@ -507,6 +544,24 @@ contract FlightSuretyData{
                         )
                         pure
                         external
-                        returns(bytes32);                     
+                        returns(bytes32); 
+
+function getFlightTicket
+                        (
+                          bytes32 flightKey, 
+                          address customerAddress 
+                                                                
+                        )
+                        external;
+                                           
+    
+function buyFligthAndInsurance
+                            (     
+                             bytes32 flightKey,   
+                             uint payment, 
+                             address customerAddress                       
+                            )
+                            external
+                            payable;                        
     
 }

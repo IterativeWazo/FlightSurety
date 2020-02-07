@@ -113,7 +113,7 @@ contract FlightSuretyData {
 
     modifier requireIsFlight(bytes32 flightKey)
     {
-        require(flights[flightKey].departureTime == 0, "Flight does not exist");
+        require(flights[flightKey].ticketFee > 0, "Flight does not exist");
         _;
     }
 
@@ -274,12 +274,12 @@ contract FlightSuretyData {
     function getFlightTicket
                             (
                                     bytes32 flightKey, 
-                                    address customerAddress                             
+                                    address customerAddress 
+                                                                
                             )
                             external
                             requireIsOperational
                             requireIsFlight(flightKey)
-                            payable
     {
         Flight storage flight = flights[flightKey];    
         flight.flightBookings[customerAddress] = true;          
@@ -291,10 +291,10 @@ contract FlightSuretyData {
     * @dev Buy insurance for a flight
     *
     */   
-    function buyInsurance
+    function buyFligthAndInsurance
                             (     
                              bytes32 flightKey,   
-                             uint amount, 
+                             uint payment, 
                              address customerAddress                       
                             )
                             external
@@ -303,12 +303,44 @@ contract FlightSuretyData {
                             payable
     {
         Flight storage flight = flights[flightKey];  
-        flight.flightInsurances[customerAddress] = amount;   
+        flight.flightInsurances[customerAddress] = payment;   
 
         customers.push(customerAddress);
         claimAmount[flight.airlineAddress] = flight.ticketFee;   
         
-        emit boughtInsurance(flightKey,customerAddress,amount);      
+        emit boughtInsurance(flightKey,customerAddress,payment);      
+    }
+
+    function checkBoughtInsurance
+                                (   
+                                  address airline,
+                                  string flightCode,
+                                  uint256 departureTime,
+                                  address customerAddress
+                                )
+                                public
+                                view
+                                returns(uint payment)
+    {
+        bytes32 flightKey = getFlightKey(airline, flightCode, departureTime);
+        Flight storage flight = flights[flightKey];
+        payment = flight.flightInsurances[customerAddress];
+    }
+
+      function checkBoughtFlightTicket
+                                      (
+                                       address airline,
+                                       string flightCode,
+                                       uint256 departureTime,
+                                       address customerAddress
+                                      )
+                                      public
+                                      view
+                                     returns(bool boughtTicket)
+    {
+        bytes32 flightKey = getFlightKey(airline, flightCode, departureTime);
+        Flight storage flight = flights[flightKey];
+        boughtTicket = flight.flightBookings[customerAddress];
     }
 
     /**
@@ -369,8 +401,8 @@ contract FlightSuretyData {
                         (
                             bytes32 flightKey
                         )
-                        external
                         view
+                        external
                         returns (uint ticketFee)
     {
       return flights[flightKey].ticketFee;                    
