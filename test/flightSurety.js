@@ -6,7 +6,7 @@ const truffleAssert = require('truffle-assertions');
 contract('Flight Surety Tests', async (accounts) => {
 
   var config;
-  //Fund 
+ 
   const minPayment = web3.utils.toWei('10', 'ether');
 
   //FLight

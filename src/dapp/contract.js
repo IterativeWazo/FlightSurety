@@ -7,7 +7,20 @@ export default class Contract {
     constructor(network, callback) {
 
         let config = Config[network];
-        this.web3 = new Web3(new Web3.providers.HttpProvider(config.url));
+       
+        if (window.ethereum) {
+        
+             this.web3 = new Web3(window.ethereum)
+         try {
+               window.ethereum.enable()
+             } catch (e) {
+               console.error('Trying to connect Web3, most likely user denied usage:  ${e}')
+             }
+          } else if (window.web3) {
+            this.web3 = new Web3(web3.currentProvider)
+          } else {
+             this.web3 = new Web3(new Web3.providers.HttpProvider(config.url))
+          }
         this.flightSuretyApp = new this.web3.eth.Contract(FlightSuretyApp.abi, config.appAddress);
         this.flightSuretyData = new this.web3.eth.Contract(FlightSuretyData.abi, config.dataAddress);
         this.initialize(callback);
@@ -71,21 +84,29 @@ export default class Contract {
                     gasPrice: '10000000000000'
              })
              return {
-              result: 'authorizeCaller',
-              error: 'error in authorizeCaller'
+              result: 'sucessfully authorized caller',
+              error: ''
             }
         } catch (error) {
           return {
-            result: 'authorize account denied',
+            result: 'authorize caller denied',
             error: error
           }
         }
   
     }
 
-    async registerAirline (newAirline) {
-        try {
-          console.log(this.owner)
+
+    async fundAndRegisterAirline(fee, airline){
+        try{   
+          await this.flightSuretyApp.methods
+          .fund()
+          .send({
+            from: this.owner,
+            gas: 2000000,
+            gasPrice: 100000,
+            value: this.web3.utils.toWei(fee, 'ether')
+          });
           await this.flightSuretyApp.methods
             .registerAirline(newAirline)
             .send({ from: this.owner,
@@ -97,8 +118,10 @@ export default class Contract {
             .call()
           return {
             address: this.owner,
-            votes: referral
+            votes: referral,
+            fee: fee
           }
+
         } catch (error) {
           return {
             error: error
@@ -107,60 +130,43 @@ export default class Contract {
       }
        
       async registerFlight (
-        statusCode,
         flightCode,
         origin,
         destination,
         departureTime,
-        ticketFee,
-        airlineAddress ) {
+        ticketFee) {
         try {
-          const priceWei = this.web3.utils.toWei(ticketFee.toString(), 'ether')
+          const feeWei = this.web3.utils.toWei(ticketFee.toString(), 'ether')
           await this.flightSuretyApp.methods
-            .registerFlight(0, flightCode, origin, destination, departureTime, airlineAddress)
-            .send({ from: this.account,
+            .registerFlight(0,flightCode, origin, destination, departureTime, feeWei)
+            .send({ from: this.owner,
                 gas: 2000000,
                 gasPrice: 100000
              })
-          const flightKey = await this.flightSuretyData.methods.getFlightIdentifier(airline,flightCode,departureTime).call({ from: this.owner})
           return {
-            flightKey: flightKey,
+            result: 'succesfully registered flight',
             error: ''
           }
         } catch (error) {
           return {
-            flightKey: 'Not returned',
+            result: 'unable to register flight',
             error: error
           }
         }
       }
     
-      fund (fee, callback) {
-        let self = this
-        console.log(self.owner);
-        self.flightSuretyApp.methods
-          .fund()
-          .send({
-            from: self.owner,
-            gas: 2000000,
-            gasPrice: 100000,
-            value: self.web3.utils.toWei(amount, 'ether')
-          }, (error, result) => {
-            callback(error, { fee: fee, address: self.owner })
-          })
-      }
+      
     
       async getFlightTicketAndBuyInsurance(airline, flightCode, departureTime, customerAddress, payment) {
-        let pay = payment.toString()
-        const amount = this.web3.utils.toWei(insurance.toString(), 'ether')
+        const pay = this.web3.utils.toWei(payment.toString(), 'ether')
         try {
           await this.flightSuretyApp.methods
-            .bookTicketAndBuyInsurance(airline, flightCode, departureTime,customerAddress, payment)
+            .bookTicketAndBuyInsurance(airline, flightCode, departureTime,customerAddress, pay)
             .send({
               from: this.owner,
               gas: 2000000,
               gasPrice: 100000,
-              value: this.web3.utils.toWei(pay.toString(), 'ether')
+              value: pay
             })
           return { customer: this.owner }
         } catch (error) {
@@ -171,7 +177,7 @@ export default class Contract {
         }
       }
     
-      async withdraw () {
+      async payInsuranceToCustomer() {
         await this.flightSuretyApp.methods
           .payInsurance()
           .send({ from: this.owner,
